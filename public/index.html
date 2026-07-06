@@ -132,33 +132,29 @@
     }
   }
 
-  // 底座图形：知乎问答气泡。返回气泡几何信息
+  // 底座图形：知乎品牌核心图形「对话框」（B-1/B-2 规范）
+  // = 直角矩形「几何图形」+ 左下 66°34′ 的「角」（角度为规范强制值，不可更改）
+  var TAIL_ANGLE = ((66 + 34 / 60) * Math.PI) / 180;
+
   // 底边收在 75% 高度，给右下二维码/左下统计留出走廊，互不遮挡
   function bubbleRect(W, H) {
     var bx = W * 0.08, bw = W * 0.84;
     var by = H * 0.16, bh = H * 0.59;
-    return { bx: bx, by: by, bw: bw, bh: bh, r: Math.min(bw, bh) * 0.075, tailH: H * 0.06 };
+    var tailH = Math.min(bh * 0.1, H * 0.05);
+    return { bx: bx, by: by, bw: bw, bh: bh, tailH: tailH };
   }
 
   function tracePath(ctx, g) {
-    var bx = g.bx, by = g.by, bw = g.bw, bh = g.bh, r = g.r;
+    var bx = g.bx, by = g.by, bw = g.bw, bh = g.bh;
     var bot = by + bh;
-    // 尾巴基部在底边左侧，指向左下角的扫码/统计区
-    var t1 = bx + bw * 0.14, t2 = bx + bw * 0.26;
-    var tipX = bx + bw * 0.075, tipY = bot + g.tailH;
+    var h = g.tailH;
+    var w = Math.tan(TAIL_ANGLE) * h; // 「角」顶角精确 66°34′
     ctx.beginPath();
-    ctx.moveTo(bx + r, by);
-    ctx.lineTo(bx + bw - r, by);
-    ctx.quadraticCurveTo(bx + bw, by, bx + bw, by + r);
-    ctx.lineTo(bx + bw, bot - r);
-    ctx.quadraticCurveTo(bx + bw, bot, bx + bw - r, bot);
-    ctx.lineTo(t2, bot);
-    ctx.quadraticCurveTo(t1 + (t2 - t1) * 0.4, bot, tipX, tipY);
-    ctx.quadraticCurveTo(t1, bot + (tipY - bot) * 0.15, t1, bot);
-    ctx.lineTo(bx + r, bot);
-    ctx.quadraticCurveTo(bx, bot, bx, bot - r);
-    ctx.lineTo(bx, by + r);
-    ctx.quadraticCurveTo(bx, by, bx + r, by);
+    ctx.moveTo(bx, by);
+    ctx.lineTo(bx + bw, by);
+    ctx.lineTo(bx + bw, bot);
+    ctx.lineTo(bx + w, bot);
+    ctx.lineTo(bx, bot + h); // 角尖在左边缘延长线上，左边缘保持垂直
     ctx.closePath();
   }
 
@@ -181,27 +177,14 @@
     tracePath(ctx, g);
     ctx.fill();
     ctx.restore();
-    // 品牌蓝描边 + 微光
+    // 品牌蓝描边（B-2 描边式扩展图形），保持图形语言纯净不加装饰
     ctx.save();
-    ctx.shadowColor = "rgba(5, 109, 232, .5)";
-    ctx.shadowBlur = 16 * dpr;
-    ctx.strokeStyle = "rgba(77, 149, 255, .55)";
+    ctx.shadowColor = "rgba(5, 109, 232, .4)";
+    ctx.shadowBlur = 12 * dpr;
+    ctx.strokeStyle = "rgba(77, 149, 255, .6)";
     ctx.lineWidth = 2 * dpr;
     tracePath(ctx, g);
     ctx.stroke();
-    ctx.restore();
-    // 气泡内的知乎式引号（半透明，词会自动避开）。
-    // 必须 save/restore：textAlign/textBaseline 泄漏会让 wordcloud2 的
-    // 绘制位置与碰撞检测错位，词会互相重叠
-    ctx.save();
-    ctx.fillStyle = "rgba(77, 149, 255, .28)";
-    ctx.textBaseline = "top";
-    ctx.font = "700 " + Math.round(g.bh * 0.15) + 'px "PingFang SC", "Microsoft YaHei", sans-serif';
-    ctx.textAlign = "left";
-    ctx.fillText("「", g.bx + g.bw * 0.02, g.by + g.bh * 0.04);
-    ctx.textAlign = "right";
-    ctx.textBaseline = "bottom";
-    ctx.fillText("」", g.bx + g.bw * 0.98, g.by + g.bh * 0.97);
     ctx.restore();
     return g;
   }
