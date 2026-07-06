@@ -28,14 +28,26 @@
   header h1 .hl { color: #4d95ff; }
   header p { margin-top: 6px; font-size: clamp(12px, 1.2vw, 18px); color: #75acfe; opacity: .75; letter-spacing: 1px; }
   .qr-card {
-    position: absolute; right: 32px; bottom: 32px; z-index: 5;
-    background: #fff; border-radius: 14px; padding: 14px 14px 10px;
-    text-align: center; box-shadow: 0 8px 40px rgba(5, 109, 232, .4);
+    position: absolute; right: 20px; bottom: 20px; z-index: 5;
+    background: #fff; border-radius: 10px; padding: 8px 8px 6px;
+    text-align: center; box-shadow: 0 4px 18px rgba(0, 0, 0, .35);
   }
   .qr-card #qr { display: block; line-height: 0; }
-  .qr-card #qr img { display: block; }
-  .qr-card .tip { margin-top: 8px; font-size: 14px; font-weight: 600; color: #121212; }
-  .qr-card .url { margin-top: 2px; font-size: 11px; color: #8590a6; }
+  .qr-card #qr img {
+    display: block;
+    width: clamp(72px, min(9vw, 13vh), 116px); height: auto;
+    image-rendering: pixelated;
+  }
+  .qr-card .tip { margin-top: 5px; font-size: 12px; font-weight: 600; color: #121212; }
+  .qr-card .url { margin-top: 1px; font-size: 9px; color: #8590a6; }
+  @media (max-width: 640px) {
+    .qr-card { right: 12px; bottom: 12px; padding: 6px 6px 4px; border-radius: 8px; }
+    .qr-card #qr img { width: clamp(56px, 16vw, 80px); }
+    .qr-card .tip { font-size: 10px; margin-top: 3px; }
+    .qr-card .url { display: none; }
+    .stats { left: 12px; bottom: 12px; font-size: 12px; }
+    .stats b { font-size: 20px; }
+  }
   .stats {
     position: absolute; left: 32px; bottom: 32px; z-index: 5;
     color: #75acfe; opacity: .9; font-size: 15px; letter-spacing: 1px;
@@ -121,10 +133,11 @@
   }
 
   // 底座图形：知乎问答气泡。返回气泡几何信息
+  // 底边收在 75% 高度，给右下二维码/左下统计留出走廊，互不遮挡
   function bubbleRect(W, H) {
     var bx = W * 0.08, bw = W * 0.84;
-    var by = H * 0.17, bh = H * 0.61;
-    return { bx: bx, by: by, bw: bw, bh: bh, r: Math.min(bw, bh) * 0.075, tailH: H * 0.065 };
+    var by = H * 0.16, bh = H * 0.59;
+    return { bx: bx, by: by, bw: bw, bh: bh, r: Math.min(bw, bh) * 0.075, tailH: H * 0.06 };
   }
 
   function tracePath(ctx, g) {
@@ -208,7 +221,8 @@
     var qr = qrcode(0, "M");
     qr.addData(url);
     qr.make();
-    document.getElementById("qr").innerHTML = qr.createImgTag(5, 8);
+    // 高清生成（cellSize 6），实际显示尺寸由 CSS clamp 控制
+    document.getElementById("qr").innerHTML = qr.createImgTag(6, 12);
     document.getElementById("joinUrl").textContent = location.host + "/join";
   })();
 
