@@ -25,13 +25,14 @@ npx wrangler d1 execute zhihu-wordcloud --local --file schema.sql   # 首次
 npx wrangler pages dev public --binding ADMIN_TOKEN=localtest123
 ```
 
-## 部署
+## 部署（CI/CD）
 
-本项目用 Pages Direct Upload（不走 Git 集成）。流程：
+Pages 项目 `zhihu-wordcloud` 已接 Cloudflare Git 集成：**push / PR 合并 / force-push 到 `main` 即自动云端构建发布**，无需本地任何操作。
 
-1. `npx wrangler pages functions build --outdir build` 编译 Functions
-2. 静态资源经 Pages upload JWT 上传（见部署会话记录，或直接 `wrangler pages deploy public/`——需 `wrangler login`）
-3. D1 绑定（binding 名 `DB`）与 `ADMIN_TOKEN`（secret）配置在 Pages 项目 `zhihu-wordcloud` 的 deployment_configs 中
+- 构建配置：无 build command，输出目录 `public/`，`functions/` 自动编译
+- D1 绑定（binding 名 `DB`）与 `ADMIN_TOKEN`（secret）配置在项目 deployment_configs 中，与代码无关
+- 非 main 分支不产生 preview 部署（已关闭）
+- 构建状态查看：Cloudflare Dashboard → Pages → zhihu-wordcloud
 
 ## 活动现场清单
 
