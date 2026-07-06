@@ -1,0 +1,8 @@
+name = "zhihu-wordcloud"
+compatibility_date = "2025-06-01"
+pages_build_output_dir = "public"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "zhihu-wordcloud"
+database_id = "ce9d1ae4-d859-48fc-8e0b-a82c485d718e"

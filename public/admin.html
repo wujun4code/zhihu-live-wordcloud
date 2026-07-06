@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>词云管理台</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f6f8fa; color: #121212; padding: 24px;
+    max-width: 720px; margin: 0 auto;
+  }
+  h1 { font-size: 20px; margin-bottom: 20px; }
+  .panel { background: #fff; border-radius: 12px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+  label { font-size: 13px; color: #8590a6; display: block; margin-bottom: 6px; }
+  input[type=password], input[type=text] {
+    width: 100%; padding: 10px 12px; font-size: 15px;
+    border: 1.5px solid #d3dce8; border-radius: 8px; outline: none;
+  }
+  input:focus { border-color: #0084ff; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+  button {
+    padding: 10px 18px; font-size: 14px; font-weight: 600;
+    border: none; border-radius: 8px; cursor: pointer;
+    background: #0084ff; color: #fff;
+  }
+  button.warn { background: #ff9f1a; }
+  button.danger { background: #f1403c; }
+  button.ghost { background: #eef2f7; color: #4a5468; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .stat { font-size: 14px; color: #8590a6; margin-top: 8px; }
+  .stat b { color: #0084ff; font-size: 20px; margin: 0 4px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid #eef2f7; font-size: 14px; }
+  th { color: #8590a6; font-weight: 500; font-size: 13px; }
+  td button { padding: 4px 12px; font-size: 13px; }
+  #msg { font-size: 14px; margin-top: 10px; min-height: 18px; }
+  #msg.ok { color: #0a9f6c; }
+  #msg.err { color: #f1403c; }
+</style>
+</head>
+<body>
+  <h1>🛠️ 词云管理台</h1>
+
+  <div class="panel">
+    <label>管理口令</label>
+    <input type="password" id="token" placeholder="输入 ADMIN_TOKEN">
+    <div class="row">
+      <button id="save-token" class="ghost">保存口令</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="stat">已收到<b id="total">–</b>个词 · <span id="paused-state">状态加载中…</span></div>
+    <div class="row">
+      <button id="toggle-pause" class="warn">暂停收集</button>
+      <button id="export" class="ghost">导出 CSV</button>
+      <button id="clear" class="danger">清空全部数据</button>
+    </div>
+    <div id="msg"></div>
+  </div>
+
+  <div class="panel">
+    <label>词列表（点删除可移除不当词的全部提交）</label>
+    <table>
+      <thead><tr><th>词</th><th>次数</th><th></th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+
+<script>
+(function () {
+  var tokenInput = document.getElementById("token");
+  var msg = document.getElementById("msg");
+  var paused = false;
+
+  tokenInput.value = sessionStorage.getItem("zlwc_admin_token") || "";
+
+  function token() { return tokenInput.value.trim(); }
+  function headers() {
+    return { "content-type": "application/json", authorization: "Bearer " + token() };
+  }
+  function say(text, ok) {
+    msg.textContent = text;
+    msg.className = ok ? "ok" : "err";
+    setTimeout(function () { msg.textContent = ""; }, 4000);
+  }
+
+  document.getElementById("save-token").onclick = function () {
+    sessionStorage.setItem("zlwc_admin_token", token());
+    say("口令已保存（仅当前浏览器会话）", true);
+  };
+
+  function refresh() {
+    fetch("/api/words").then(function (r) { return r.json(); }).then(function (d) {
+      document.getElementById("total").textContent = d.total;
+      paused = d.paused;
+      document.getElementById("paused-state").textContent = paused ? "⏸️ 已暂停" : "🟢 收集中";
+      document.getElementById("toggle-pause").textContent = paused ? "恢复收集" : "暂停收集";
+      var rows = document.getElementById("rows");
+      rows.innerHTML = "";
+      d.words.forEach(function (w) {
+        var tr = document.createElement("tr");
+        var td1 = document.createElement("td"); td1.textContent = w.word;
+        var td2 = document.createElement("td"); td2.textContent = w.count;
+        var td3 = document.createElement("td");
+        var del = document.createElement("button");
+        del.className = "danger"; del.textContent = "删除";
+        del.onclick = function () {
+          if (!confirm('删除「' + w.word + '」的全部 ' + w.count + ' 条提交？')) return;
+          fetch("/api/admin/delete-word", { method: "POST", headers: headers(), body: JSON.stringify({ word: w.word }) })
+            .then(function (r) { return r.json(); })
+            .then(function (d) { d.ok ? (say("已删除", true), refresh()) : say(d.error === "unauthorized" ? "口令错误" : "删除失败"); });
+        };
+        td3.appendChild(del);
+        tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3);
+        rows.appendChild(tr);
+      });
+    });
+  }
+
+  document.getElementById("toggle-pause").onclick = function () {
+    fetch("/api/admin/pause", { method: "POST", headers: headers(), body: JSON.stringify({ paused: !paused }) })
+      .then(function (r) { return r.json(); })
+      .then(function (d) { d.ok ? (say(d.paused ? "已暂停" : "已恢复", true), refresh()) : say(d.error === "unauthorized" ? "口令错误" : "操作失败"); });
+  };
+
+  document.getElementById("clear").onclick = function () {
+    if (!confirm("确定清空全部提交数据？此操作不可恢复（建议先导出 CSV）")) return;
+    fetch("/api/admin/clear", { method: "POST", headers: headers() })
+      .then(function (r) { return r.json(); })
+      .then(function (d) { d.ok ? (say("已清空", true), refresh()) : say(d.error === "unauthorized" ? "口令错误" : "操作失败"); });
+  };
+
+  document.getElementById("export").onclick = function () {
+    location.href = "/api/admin/export?token=" + encodeURIComponent(token());
+  };
+
+  refresh();
+  setInterval(refresh, 5000);
+})();
+</script>
+</body>
+</html>
