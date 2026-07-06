@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>一个词，你心中的知乎</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    /* 知乎品牌蓝色阶渐变 */
+    background: linear-gradient(160deg, #056de8 0%, #075bb8 55%, #17314d 100%);
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px;
+  }
+  .card {
+    width: 100%; max-width: 400px;
+    background: #fff; border-radius: 20px;
+    padding: 36px 28px 32px;
+    box-shadow: 0 20px 60px rgba(23, 49, 77, .45);
+    text-align: center;
+  }
+  .logo { font-size: 40px; margin-bottom: 12px; }
+  h1 { font-size: 22px; color: #121212; margin-bottom: 8px; }
+  .sub { font-size: 14px; color: #8590a6; margin-bottom: 28px; line-height: 1.6; }
+  .input-wrap { position: relative; margin-bottom: 16px; }
+  input {
+    width: 100%; padding: 14px 52px 14px 16px;
+    font-size: 18px; border: 2px solid #b2d0fe; border-radius: 12px;
+    outline: none; transition: border-color .2s;
+  }
+  input:focus { border-color: #056de8; }
+  .counter { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 12px; color: #b4bccc; }
+  button {
+    width: 100%; padding: 14px; font-size: 17px; font-weight: 600;
+    color: #fff; background: #056de8; border: none; border-radius: 12px;
+    cursor: pointer; transition: opacity .2s;
+  }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .msg { margin-top: 14px; font-size: 14px; min-height: 20px; color: #ef465d; }
+  .done { display: none; }
+  .done .check {
+    width: 72px; height: 72px; margin: 8px auto 20px;
+    border-radius: 50%; background: #e6f0fe;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 36px; color: #056de8;
+  }
+  .done h2 { font-size: 20px; color: #121212; margin-bottom: 8px; }
+  .done p { font-size: 14px; color: #8590a6; line-height: 1.7; }
+  .done .word-echo { font-size: 26px; font-weight: 700; color: #056de8; margin: 14px 0 6px; word-break: break-all; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div id="form-view">
+      <div class="logo">💙</div>
+      <h1>用 1 个词描述「你心中的知乎」</h1>
+      <p class="sub">提交后，你的词会实时出现在大屏词云上</p>
+      <div class="input-wrap">
+        <input id="word" type="text" maxlength="10" placeholder="比如：好奇心" autocomplete="off" enterkeyhint="send">
+        <span class="counter"><span id="len">0</span>/10</span>
+      </div>
+      <button id="submit">提交到大屏</button>
+      <div class="msg" id="msg"></div>
+    </div>
+    <div class="done" id="done-view">
+      <div class="check">✓</div>
+      <h2>已收到！</h2>
+      <div class="word-echo" id="echo"></div>
+      <p>抬头看大屏，找找你的词 👀<br>词越热门，字就越大</p>
+    </div>
+  </div>
+<script>
+(function () {
+  var input = document.getElementById("word");
+  var btn = document.getElementById("submit");
+  var msg = document.getElementById("msg");
+  var lenEl = document.getElementById("len");
+  var KEY = "zlwc_submitted_word";
+
+  function showDone(word) {
+    document.getElementById("form-view").style.display = "none";
+    var done = document.getElementById("done-view");
+    done.style.display = "block";
+    document.getElementById("echo").textContent = "「" + word + "」";
+  }
+
+  var prev = localStorage.getItem(KEY);
+  if (prev) { showDone(prev); return; }
+
+  input.addEventListener("input", function () {
+    lenEl.textContent = [...input.value].length;
+    msg.textContent = "";
+  });
+  input.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") btn.click();
+  });
+
+  var ERRORS = {
+    empty: "先输入一个词吧",
+    too_long: "太长啦，10 个字以内",
+    banned: "这个词不太合适，换一个试试",
+    paused: "收集已暂停，等主持人开启哦",
+    rate_limited: "手速太快了，稍等一下",
+  };
+
+  btn.addEventListener("click", function () {
+    var word = input.value.trim();
+    if (!word) { msg.textContent = ERRORS.empty; return; }
+    btn.disabled = true;
+    btn.textContent = "提交中…";
+    fetch("/api/submit", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ word: word }),
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (d.ok) {
+          localStorage.setItem(KEY, word);
+          showDone(word);
+        } else {
+          msg.textContent = ERRORS[d.error] || "提交失败，再试一次";
+          btn.disabled = false;
+          btn.textContent = "提交到大屏";
+        }
+      })
+      .catch(function () {
+        msg.textContent = "网络开小差了，再试一次";
+        btn.disabled = false;
+        btn.textContent = "提交到大屏";
+      });
+  });
+})();
+</script>
+</body>
+</html>

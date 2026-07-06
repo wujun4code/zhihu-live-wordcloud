@@ -2,135 +2,297 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<title>一个词，你心中的知乎</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>你心中的知乎 · 实时词云</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body { height: 100%; }
+  html, body { height: 100%; overflow: hidden; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
-    background: linear-gradient(160deg, #0084ff 0%, #0058c9 60%, #003a8c 100%);
-    display: flex; align-items: center; justify-content: center;
-    padding: 24px;
+    /* 品牌深蓝底：知乎蓝色阶深端 #17314d 衍生 */
+    background: radial-gradient(ellipse at 50% 42%, #14273d 0%, #0e1a2c 60%, #0a1220 100%);
+    color: #eaf2fd;
   }
-  .card {
-    width: 100%; max-width: 400px;
-    background: #fff; border-radius: 20px;
-    padding: 36px 28px 32px;
-    box-shadow: 0 20px 60px rgba(0, 30, 80, .35);
-    text-align: center;
+  #stage { position: absolute; inset: 0; }
+  canvas.cloud {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    transition: opacity .6s ease;
   }
-  .logo { font-size: 40px; margin-bottom: 12px; }
-  h1 { font-size: 22px; color: #121212; margin-bottom: 8px; }
-  .sub { font-size: 14px; color: #8590a6; margin-bottom: 28px; line-height: 1.6; }
-  .input-wrap { position: relative; margin-bottom: 16px; }
-  input {
-    width: 100%; padding: 14px 52px 14px 16px;
-    font-size: 18px; border: 2px solid #d3dce8; border-radius: 12px;
-    outline: none; transition: border-color .2s;
+  header {
+    position: absolute; top: 30px; left: 0; right: 0;
+    text-align: center; pointer-events: none; z-index: 5;
   }
-  input:focus { border-color: #0084ff; }
-  .counter { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 12px; color: #b4bccc; }
-  button {
-    width: 100%; padding: 14px; font-size: 17px; font-weight: 600;
-    color: #fff; background: #0084ff; border: none; border-radius: 12px;
-    cursor: pointer; transition: opacity .2s;
+  header h1 {
+    font-size: clamp(22px, 3vw, 40px); font-weight: 700; letter-spacing: 2px;
   }
-  button:disabled { opacity: .5; cursor: not-allowed; }
-  .msg { margin-top: 14px; font-size: 14px; min-height: 20px; color: #f1403c; }
-  .done { display: none; }
-  .done .check {
-    width: 72px; height: 72px; margin: 8px auto 20px;
-    border-radius: 50%; background: #e6f3ff;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 36px; color: #0084ff;
+  header h1 .hl { color: #4d95ff; }
+  header p { margin-top: 6px; font-size: clamp(12px, 1.2vw, 18px); color: #75acfe; opacity: .75; letter-spacing: 1px; }
+  .qr-card {
+    position: absolute; right: 32px; bottom: 32px; z-index: 5;
+    background: #fff; border-radius: 14px; padding: 14px 14px 10px;
+    text-align: center; box-shadow: 0 8px 40px rgba(5, 109, 232, .4);
   }
-  .done h2 { font-size: 20px; color: #121212; margin-bottom: 8px; }
-  .done p { font-size: 14px; color: #8590a6; line-height: 1.7; }
-  .done .word-echo { font-size: 26px; font-weight: 700; color: #0084ff; margin: 14px 0 6px; word-break: break-all; }
+  .qr-card #qr { display: block; line-height: 0; }
+  .qr-card #qr img { display: block; }
+  .qr-card .tip { margin-top: 8px; font-size: 14px; font-weight: 600; color: #121212; }
+  .qr-card .url { margin-top: 2px; font-size: 11px; color: #8590a6; }
+  .stats {
+    position: absolute; left: 32px; bottom: 32px; z-index: 5;
+    color: #75acfe; opacity: .9; font-size: 15px; letter-spacing: 1px;
+  }
+  .stats b { color: #4d95ff; font-size: 30px; font-weight: 700; margin: 0 6px; font-variant-numeric: tabular-nums; }
+  .paused-badge {
+    display: none;
+    position: absolute; top: 32px; right: 32px; z-index: 5;
+    padding: 6px 14px; border-radius: 999px;
+    background: rgba(252, 195, 4, .12); border: 1px solid rgba(252, 195, 4, .55);
+    color: #fcc304; font-size: 14px; letter-spacing: 2px;
+  }
+  .empty-hint {
+    position: absolute; left: 50%; top: 48%; transform: translate(-50%, -50%);
+    color: #3c5a82; font-size: clamp(18px, 2vw, 28px); letter-spacing: 3px;
+    pointer-events: none; z-index: 1;
+  }
 </style>
 </head>
 <body>
-  <div class="card">
-    <div id="form-view">
-      <div class="logo">💙</div>
-      <h1>用 1 个词描述「你心中的知乎」</h1>
-      <p class="sub">提交后，你的词会实时出现在大屏词云上</p>
-      <div class="input-wrap">
-        <input id="word" type="text" maxlength="10" placeholder="比如：好奇心" autocomplete="off" enterkeyhint="send">
-        <span class="counter"><span id="len">0</span>/10</span>
-      </div>
-      <button id="submit">提交到大屏</button>
-      <div class="msg" id="msg"></div>
-    </div>
-    <div class="done" id="done-view">
-      <div class="check">✓</div>
-      <h2>已收到！</h2>
-      <div class="word-echo" id="echo"></div>
-      <p>抬头看大屏，找找你的词 👀<br>词越热门，字就越大</p>
-    </div>
+  <header>
+    <h1>用 1 个词描述 <span class="hl">「你心中的知乎」</span></h1>
+    <p>扫右下角二维码，你的词马上出现在这里</p>
+  </header>
+  <div class="paused-badge" id="paused">已暂停收集</div>
+  <div id="stage">
+    <div class="empty-hint" id="empty">等待第一个词…</div>
+    <canvas class="cloud" id="c1"></canvas>
+    <canvas class="cloud" id="c2" style="opacity:0"></canvas>
   </div>
+  <div class="stats">已收到<b id="total">0</b>个词</div>
+  <div class="qr-card">
+    <div id="qr"></div>
+    <div class="tip">扫码参与</div>
+    <div class="url" id="joinUrl"></div>
+  </div>
+<script src="/js/wordcloud2.js"></script>
+<script src="/js/qrcode.js"></script>
 <script>
 (function () {
-  var input = document.getElementById("word");
-  var btn = document.getElementById("submit");
-  var msg = document.getElementById("msg");
-  var lenEl = document.getElementById("len");
-  var KEY = "zlwc_submitted_word";
+  // 知乎品牌蓝色阶（A-13）：频次越高越亮，已按深色底通过对比度校验
+  var TIERS = ["#b2d0fe", "#75acfe", "#4d95ff", "#056de8"];
 
-  function showDone(word) {
-    document.getElementById("form-view").style.display = "none";
-    var done = document.getElementById("done-view");
-    done.style.display = "block";
-    document.getElementById("echo").textContent = "「" + word + "」";
+  var canvases = [document.getElementById("c1"), document.getElementById("c2")];
+  var front = 0;
+  var lastData = "";
+  var lastList = [];
+  var dpr = 1;
+
+  // 现场排障：地址栏加 #debug 显示日志浮层
+  var DBG = location.hash === "#debug";
+  function dbg(m) {
+    if (!DBG) return;
+    var el = document.getElementById("dbg");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "dbg";
+      el.style.cssText = "position:absolute;left:8px;top:8px;z-index:99;color:#fff;font:12px monospace;white-space:pre;text-shadow:0 0 4px #000";
+      document.body.appendChild(el);
+    }
+    el.textContent += m + "\n";
+  }
+  window.addEventListener("error", function (e) { dbg("ERR " + e.message + " @" + e.lineno); });
+
+  function sizeCanvases() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvases.forEach(function (c) {
+      c.width = window.innerWidth * dpr;
+      c.height = window.innerHeight * dpr;
+    });
   }
 
-  var prev = localStorage.getItem(KEY);
-  if (prev) { showDone(prev); return; }
+  // 设置 canvas.width 会清空画布，所以 resize 后必须立即重绘
+  function handleResize() {
+    dbg("resize " + window.innerWidth + "x" + window.innerHeight);
+    sizeCanvases();
+    if (lastList.length) {
+      lastData = "";
+      draw(lastList);
+    } else {
+      drawScene(canvases[front]);
+    }
+  }
 
-  input.addEventListener("input", function () {
-    lenEl.textContent = [...input.value].length;
-    msg.textContent = "";
+  // 底座图形：知乎问答气泡。返回气泡几何信息
+  function bubbleRect(W, H) {
+    var bx = W * 0.08, bw = W * 0.84;
+    var by = H * 0.17, bh = H * 0.61;
+    return { bx: bx, by: by, bw: bw, bh: bh, r: Math.min(bw, bh) * 0.075, tailH: H * 0.065 };
+  }
+
+  function tracePath(ctx, g) {
+    var bx = g.bx, by = g.by, bw = g.bw, bh = g.bh, r = g.r;
+    var bot = by + bh;
+    // 尾巴基部在底边左侧，指向左下角的扫码/统计区
+    var t1 = bx + bw * 0.14, t2 = bx + bw * 0.26;
+    var tipX = bx + bw * 0.075, tipY = bot + g.tailH;
+    ctx.beginPath();
+    ctx.moveTo(bx + r, by);
+    ctx.lineTo(bx + bw - r, by);
+    ctx.quadraticCurveTo(bx + bw, by, bx + bw, by + r);
+    ctx.lineTo(bx + bw, bot - r);
+    ctx.quadraticCurveTo(bx + bw, bot, bx + bw - r, bot);
+    ctx.lineTo(t2, bot);
+    ctx.quadraticCurveTo(t1 + (t2 - t1) * 0.4, bot, tipX, tipY);
+    ctx.quadraticCurveTo(t1, bot + (tipY - bot) * 0.15, t1, bot);
+    ctx.lineTo(bx + r, bot);
+    ctx.quadraticCurveTo(bx, bot, bx, bot - r);
+    ctx.lineTo(bx, by + r);
+    ctx.quadraticCurveTo(bx, by, bx + r, by);
+    ctx.closePath();
+  }
+
+  // 画遮罩场景：气泡外为不透明底色（词云禁区），气泡内透出页面背景（词云画布）
+  function drawScene(canvas) {
+    var ctx = canvas.getContext("2d");
+    var W = canvas.width, H = canvas.height;
+    var g = bubbleRect(W, H);
+    ctx.clearRect(0, 0, W, H);
+    // 与 CSS 背景一致的径向渐变
+    var grad = ctx.createRadialGradient(W / 2, H * 0.42, 0, W / 2, H * 0.42, Math.max(W, H) * 0.75);
+    grad.addColorStop(0, "#14273d");
+    grad.addColorStop(0.6, "#0e1a2c");
+    grad.addColorStop(1, "#0a1220");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+    // 挖出气泡内部
+    ctx.save();
+    ctx.globalCompositeOperation = "destination-out";
+    tracePath(ctx, g);
+    ctx.fill();
+    ctx.restore();
+    // 品牌蓝描边 + 微光
+    ctx.save();
+    ctx.shadowColor = "rgba(5, 109, 232, .5)";
+    ctx.shadowBlur = 16 * dpr;
+    ctx.strokeStyle = "rgba(77, 149, 255, .55)";
+    ctx.lineWidth = 2 * dpr;
+    tracePath(ctx, g);
+    ctx.stroke();
+    ctx.restore();
+    // 气泡内的知乎式引号（半透明，词会自动避开）。
+    // 必须 save/restore：textAlign/textBaseline 泄漏会让 wordcloud2 的
+    // 绘制位置与碰撞检测错位，词会互相重叠
+    ctx.save();
+    ctx.fillStyle = "rgba(77, 149, 255, .28)";
+    ctx.textBaseline = "top";
+    ctx.font = "700 " + Math.round(g.bh * 0.15) + 'px "PingFang SC", "Microsoft YaHei", sans-serif';
+    ctx.textAlign = "left";
+    ctx.fillText("「", g.bx + g.bw * 0.02, g.by + g.bh * 0.04);
+    ctx.textAlign = "right";
+    ctx.textBaseline = "bottom";
+    ctx.fillText("」", g.bx + g.bw * 0.98, g.by + g.bh * 0.97);
+    ctx.restore();
+    return g;
+  }
+
+  sizeCanvases();
+  drawScene(canvases[0]);
+  dbg("init " + canvases[0].width + "x" + canvases[0].height + " WC=" + typeof WordCloud);
+  var resizeTimer;
+  window.addEventListener("resize", function () {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(handleResize, 200);
   });
-  input.addEventListener("keydown", function (e) {
-    if (e.key === "Enter") btn.click();
-  });
 
-  var ERRORS = {
-    empty: "先输入一个词吧",
-    too_long: "太长啦，10 个字以内",
-    banned: "这个词不太合适，换一个试试",
-    paused: "收集已暂停，等主持人开启哦",
-    rate_limited: "手速太快了，稍等一下",
-  };
+  // 二维码指向提交页 /join
+  (function () {
+    var url = location.origin + "/join";
+    var qr = qrcode(0, "M");
+    qr.addData(url);
+    qr.make();
+    document.getElementById("qr").innerHTML = qr.createImgTag(5, 8);
+    document.getElementById("joinUrl").textContent = location.host + "/join";
+  })();
 
-  btn.addEventListener("click", function () {
-    var word = input.value.trim();
-    if (!word) { msg.textContent = ERRORS.empty; return; }
-    btn.disabled = true;
-    btn.textContent = "提交中…";
-    fetch("/api/submit", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ word: word }),
-    })
+  function draw(words) {
+    lastList = words;
+    var back = canvases[1 - front];
+    var g = drawScene(back);
+    var maxCount = words[0][1];
+    var base = Math.min(g.bw, g.bh);
+    dbg("draw n=" + words.length + " base=" + Math.round(base));
+
+    WordCloud(back, {
+      list: words,
+      clearCanvas: false,
+      backgroundColor: "transparent",
+      origin: [g.bx + g.bw / 2, g.by + g.bh / 2],
+      gridSize: Math.max(8, Math.round(base / 85)),
+      weightFactor: function (count) {
+        var r = Math.pow(count / maxCount, 0.6);
+        return Math.max(base / 42, r * (base / 5));
+      },
+      color: function (word, count) {
+        var r = count / maxCount;
+        if (r >= 0.7) return TIERS[0];
+        if (r >= 0.45) return TIERS[1];
+        if (r >= 0.2) return TIERS[2];
+        return TIERS[3];
+      },
+      fontFamily: '"PingFang SC", "Microsoft YaHei", sans-serif',
+      fontWeight: 600,
+      // wordcloud2 对 CJK 竖排词碰撞检测有缺陷会重叠，全横排（投屏可读性也更好）
+      rotateRatio: 0,
+      drawOutOfBound: false,
+      shuffle: false,
+    });
+
+    // 双画布交叉淡入，避免重绘闪烁
+    setTimeout(function () {
+      dbg("swap -> " + (1 - front));
+      back.style.opacity = 1;
+      canvases[front].style.opacity = 0;
+      front = 1 - front;
+    }, 350);
+  }
+
+  function poll() {
+    fetch("/api/words")
       .then(function (r) { return r.json(); })
       .then(function (d) {
-        if (d.ok) {
-          localStorage.setItem(KEY, word);
-          showDone(word);
-        } else {
-          msg.textContent = ERRORS[d.error] || "提交失败，再试一次";
-          btn.disabled = false;
-          btn.textContent = "提交到大屏";
+        dbg("poll total=" + d.total);
+        document.getElementById("total").textContent = d.total;
+        document.getElementById("paused").style.display = d.paused ? "block" : "none";
+        document.getElementById("empty").style.display = d.total > 0 ? "none" : "block";
+        var list = d.words.map(function (w) { return [w.word, w.count]; });
+        var key = JSON.stringify(list);
+        if (list.length && key !== lastData) {
+          lastData = key;
+          draw(list);
         }
       })
-      .catch(function () {
-        msg.textContent = "网络开小差了，再试一次";
-        btn.disabled = false;
-        btn.textContent = "提交到大屏";
-      });
+      .catch(function () { /* 网络抖动，下一轮重试 */ })
+      .finally(function () { setTimeout(poll, 2000); });
+  }
+  poll();
+
+  // F 键全屏
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "f" || e.key === "F") {
+      document.fullscreenElement
+        ? document.exitFullscreen()
+        : document.documentElement.requestFullscreen();
+    }
   });
+
+  // Wake Lock：防止投屏机器息屏
+  if ("wakeLock" in navigator) {
+    var acquire = function () {
+      navigator.wakeLock.request("screen").catch(function () {});
+    };
+    acquire();
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "visible") acquire();
+    });
+  }
 })();
 </script>
 </body>
