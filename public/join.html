@@ -9,8 +9,8 @@
   html, body { height: 100%; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
-    /* 知乎品牌蓝色阶渐变 */
-    background: linear-gradient(160deg, #056de8 0%, #075bb8 55%, #17314d 100%);
+    /* 底色用白色 */
+    background: #ffffff;
     display: flex; align-items: center; justify-content: center;
     padding: 24px;
   }
@@ -24,8 +24,8 @@
     text-align: center;
   }
   .card-tail {
-    /* 左边缘垂直、斜边与之成 66°34′：宽 = tan(66°34′) × 高 ≈ 2.303 × 高 */
-    width: 37px; height: 16px;
+    /* 左边缘垂直、斜边与水平面成 66°34′：宽 = 高 / tan(66°34′) ≈ 高 / 2.303 */
+    width: 10px; height: 23px;
     background: #fff;
     clip-path: polygon(0 0, 100% 0, 0 100%);
     filter: drop-shadow(0 14px 30px rgba(23, 49, 77, .45));
@@ -66,9 +66,9 @@
   <div class="card">
     <div id="form-view">
       <div class="logo">
-        <!-- 品牌核心图形迷你版：矩形 +「角」66°34′（tan≈2.303，8 高 → 18.4 宽） -->
+        <!-- 品牌核心图形迷你版：矩形 +「角」与水平面成 66°34′（宽=高/tan≈8/2.303≈3.5） -->
         <svg width="34" height="50" viewBox="0 0 34 50" aria-hidden="true">
-          <path d="M0 0 H34 V42 H18.4 L0 50 Z" fill="#056de8"/>
+          <path d="M0 0 H34 V42 H3.5 L0 50 Z" fill="#056de8"/>
         </svg>
       </div>
       <h1>用 1 个词描述「你心中的知乎」</h1>

@@ -9,9 +9,8 @@
   html, body { height: 100%; overflow: hidden; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
-    /* 品牌深蓝底：知乎蓝色阶深端 #17314d 衍生 */
-    background: radial-gradient(ellipse at 50% 42%, #14273d 0%, #0e1a2c 60%, #0a1220 100%);
-    color: #eaf2fd;
+    background: #ffffff;
+    color: #17314d;
   }
   #stage { position: absolute; inset: 0; }
   canvas.cloud {
@@ -19,40 +18,38 @@
     transition: opacity .6s ease;
   }
   header {
-    position: absolute; top: 30px; left: 0; right: 0;
+    position: absolute; top: 40px; left: 0; right: 0;
     text-align: center; pointer-events: none; z-index: 5;
   }
   header h1 {
     font-size: clamp(22px, 3vw, 40px); font-weight: 700; letter-spacing: 2px;
   }
-  header h1 .hl { color: #4d95ff; }
-  header p { margin-top: 6px; font-size: clamp(12px, 1.2vw, 18px); color: #75acfe; opacity: .75; letter-spacing: 1px; }
+  header h1 .hl { color: #056de8; }
+  header p { margin-top: 6px; font-size: clamp(12px, 1.2vw, 18px); color: #8590a6; letter-spacing: 1px; }
   .qr-card {
-    position: absolute; right: 20px; bottom: 20px; z-index: 5;
-    background: #fff; border-radius: 10px; padding: 8px 8px 6px;
-    text-align: center; box-shadow: 0 4px 18px rgba(0, 0, 0, .35);
+    position: absolute; right: 40px; top: 50%; transform: translateY(-50%); z-index: 5;
+    background: #fff; border-radius: 16px; padding: 24px;
+    text-align: center; box-shadow: 0 20px 60px rgba(23, 49, 77, .15);
+    width: 280px;
   }
-  .qr-card #qr { display: block; line-height: 0; }
   .qr-card #qr img {
     display: block;
-    width: clamp(72px, min(9vw, 13vh), 116px); height: auto;
+    width: 100%; height: auto;
     image-rendering: pixelated;
   }
-  .qr-card .tip { margin-top: 5px; font-size: 12px; font-weight: 600; color: #121212; }
-  .qr-card .url { margin-top: 1px; font-size: 9px; color: #8590a6; }
-  @media (max-width: 640px) {
-    .qr-card { right: 12px; bottom: 12px; padding: 6px 6px 4px; border-radius: 8px; }
-    .qr-card #qr img { width: clamp(56px, 16vw, 80px); }
-    .qr-card .tip { font-size: 10px; margin-top: 3px; }
+  .qr-card .tip { margin-top: 16px; font-size: 18px; font-weight: 600; color: #121212; }
+  .qr-card .url { margin-top: 6px; font-size: 14px; color: #8590a6; }
+  @media (max-width: 800px) {
+    .qr-card { right: 20px; top: auto; bottom: 20px; transform: none; width: 140px; padding: 12px; }
+    .qr-card .tip { font-size: 14px; margin-top: 8px; }
     .qr-card .url { display: none; }
-    .stats { left: 12px; bottom: 12px; font-size: 12px; }
-    .stats b { font-size: 20px; }
+    header { right: 0; }
   }
   .stats {
     position: absolute; left: 32px; bottom: 32px; z-index: 5;
-    color: #75acfe; opacity: .9; font-size: 15px; letter-spacing: 1px;
+    color: #8590a6; font-size: 15px; letter-spacing: 1px;
   }
-  .stats b { color: #4d95ff; font-size: 30px; font-weight: 700; margin: 0 6px; font-variant-numeric: tabular-nums; }
+  .stats b { color: #056de8; font-size: 30px; font-weight: 700; margin: 0 6px; font-variant-numeric: tabular-nums; }
   .paused-badge {
     display: none;
     position: absolute; top: 32px; right: 32px; z-index: 5;
@@ -82,14 +79,14 @@
   <div class="qr-card">
     <div id="qr"></div>
     <div class="tip">扫码参与</div>
-    <div class="url" id="joinUrl"></div>
+    <a class="url" id="joinUrl" href="https://zhihu.aiechohub.com/join" target="_blank" style="text-decoration:none;"></a>
   </div>
 <script src="/js/wordcloud2.js"></script>
 <script src="/js/qrcode.js"></script>
 <script>
 (function () {
-  // 知乎品牌蓝色阶（A-13）：频次越高越亮，已按深色底通过对比度校验
-  var TIERS = ["#b2d0fe", "#75acfe", "#4d95ff", "#056de8"];
+  // 品牌色：知乎蓝、红、绿、紫
+  var TIERS = ["#056de8", "#ef465d", "#42ae3b", "#7040da"];
 
   var canvases = [document.getElementById("c1"), document.getElementById("c2")];
   var front = 0;
@@ -136,10 +133,12 @@
   // = 直角矩形「几何图形」+ 左下 66°34′ 的「角」（角度为规范强制值，不可更改）
   var TAIL_ANGLE = ((66 + 34 / 60) * Math.PI) / 180;
 
-  // 底边收在 75% 高度，给右下二维码/左下统计留出走廊，互不遮挡
+  // 留出右侧二维码空间
   function bubbleRect(W, H) {
-    var bx = W * 0.08, bw = W * 0.84;
-    var by = H * 0.16, bh = H * 0.59;
+    var rightSpace = W > 800 ? 340 : 0;
+    var availW = W - rightSpace;
+    var bx = availW * 0.08, bw = availW * 0.84;
+    var by = H * 0.16, bh = H * 0.62;
     var tailH = Math.min(bh * 0.1, H * 0.05);
     return { bx: bx, by: by, bw: bw, bh: bh, tailH: tailH };
   }
@@ -148,7 +147,7 @@
     var bx = g.bx, by = g.by, bw = g.bw, bh = g.bh;
     var bot = by + bh;
     var h = g.tailH;
-    var w = Math.tan(TAIL_ANGLE) * h; // 「角」顶角精确 66°34′
+    var w = h / Math.tan(TAIL_ANGLE); // 「角」与水平线夹角 66°34′，窄而深
     ctx.beginPath();
     ctx.moveTo(bx, by);
     ctx.lineTo(bx + bw, by);
@@ -164,12 +163,8 @@
     var W = canvas.width, H = canvas.height;
     var g = bubbleRect(W, H);
     ctx.clearRect(0, 0, W, H);
-    // 与 CSS 背景一致的径向渐变
-    var grad = ctx.createRadialGradient(W / 2, H * 0.42, 0, W / 2, H * 0.42, Math.max(W, H) * 0.75);
-    grad.addColorStop(0, "#14273d");
-    grad.addColorStop(0.6, "#0e1a2c");
-    grad.addColorStop(1, "#0a1220");
-    ctx.fillStyle = grad;
+    // 填充遮罩，外面是纯白
+    ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, W, H);
     // 挖出气泡内部
     ctx.save();
@@ -177,15 +172,16 @@
     tracePath(ctx, g);
     ctx.fill();
     ctx.restore();
-    // 品牌蓝描边（B-2 描边式扩展图形），保持图形语言纯净不加装饰
+    // 品牌蓝描边（B-2 描边式扩展图形）
     ctx.save();
-    ctx.shadowColor = "rgba(5, 109, 232, .4)";
+    ctx.shadowColor = "rgba(5, 109, 232, .15)";
     ctx.shadowBlur = 12 * dpr;
-    ctx.strokeStyle = "rgba(77, 149, 255, .6)";
+    ctx.strokeStyle = "#056de8";
     ctx.lineWidth = 2 * dpr;
     tracePath(ctx, g);
     ctx.stroke();
     ctx.restore();
+
     return g;
   }
 
@@ -198,15 +194,15 @@
     resizeTimer = setTimeout(handleResize, 200);
   });
 
-  // 二维码指向提交页 /join
+  // 二维码指向提交页
   (function () {
-    var url = location.origin + "/join";
+    var url = "https://zhihu.aiechohub.com/join";
     var qr = qrcode(0, "M");
     qr.addData(url);
     qr.make();
     // 高清生成（cellSize 6），实际显示尺寸由 CSS clamp 控制
     document.getElementById("qr").innerHTML = qr.createImgTag(6, 12);
-    document.getElementById("joinUrl").textContent = location.host + "/join";
+    document.getElementById("joinUrl").textContent = "zhihu.aiechohub.com/join";
   })();
 
   function draw(words) {
